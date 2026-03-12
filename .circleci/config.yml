@@ -1,12 +1,15 @@
 jobs:
-  build:
-    docker:
-      - image: python:3.6                   # similar to "image" in GitLab
+
+  checkov:
+    machine: true
     steps:
       - checkout
-      - run: |                              # similar to "script" in GitLab
-          pip install -r requirements.txt
-          python manage.py check
+
+      - run: docker run --rm -w /src -v $(pwd):/src bridgecrew/checkov -d aws -o json | tee checkov-output.json
+
+      - store_artifacts:
+          path: checkov-output.json
+          destination: checkov-artifact
 
   test:
     docker:
@@ -47,16 +50,7 @@ jobs:
     steps:
       - checkout
       - run: echo "This is a deploy step"
-  checkov:
-    machine: true
-    steps:
-      - checkout
-
-      - run: docker run --rm -w /src -v $(pwd):/src bridgecrew/checkov -d aws -o json | tee checkov-output.json
-
-      - store_artifacts:
-          path: checkov-output.json
-          destination: checkov-artifact
+  
 workflows:
   version: 2
   django:
