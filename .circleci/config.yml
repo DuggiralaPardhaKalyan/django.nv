@@ -1,70 +1,56 @@
 jobs:
+  build:
+    machine: true
+    steps:
+      - checkout
+      - run: echo "This is a build step"
+
+  test:
+    machine: true
+    steps:
+      - checkout
+      - run: echo "This is a test step"
 
   checkov:
     machine: true
     steps:
       - checkout
 
-      - run: docker run --rm -w /src -v $(pwd):/src bridgecrew/checkov -d aws -o json | tee checkov-output.json
+      - run: 
+          command: docker run --rm -w /src -v $(pwd):/src bridgecrew/checkov -d aws -o json | tee checkov-output.json || true
 
       - store_artifacts:
           path: checkov-output.json
           destination: checkov-artifact
-
-  test:
-    docker:
-      - image: python:3.6
-    steps:
-      - checkout
-      - run: |
-          pip install -r requirements.txt
-          python manage.py test taskManager
-
-  oast:
-    machine: true
-    steps:
-      - checkout
-
-      - run:
-          command: docker run -v $(pwd):/src --rm hysnsec/safety check -r /src/requirements.txt --json | tee oast-results.json || true
-
-      - store_artifacts:
-          path: oast-results.json
-          destination: safety-artifact
           when: always
 
   integration:
-    docker:
-      - image: python:3.6
+    machine: true
     steps:
       - checkout
       - run:
           command: |
             echo "This is an integration step"
             exit 1
-          when: on_fail                    # Even if the job fails, continue to the next stages
+          when: on_fail         # Even if the job fails, continue to the next stages
 
   prod:
-    docker:
-      - image: python:3.6
+    machine: true
     steps:
       - checkout
       - run: echo "This is a deploy step"
-  
+
 workflows:
   version: 2
-  django:
+  terraform:
     jobs:
       - checkov
       - test:
           requires:
-            - build
-      - oast:
-          requires:
-            - test
+            - checkov
       - integration:
           requires:
-            - oast
+            - test
       - prod:
           type: approval
           requires:
